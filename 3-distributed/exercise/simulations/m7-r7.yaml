@@ -1,0 +1,67 @@
+# M = 7. One task per machine, and each task carries a seventh of the corpus.
+#
+# This scenario is expected to fail. Seven map tasks over ten million words
+# process 1,428,571 words each. The declared per-unit cost makes each task
+# 85,714 refMs, exceeding the 70,000 refMs deadline (Master.TASK_MS):
+#
+#     the deadline was 69,994 refMs and the handler declares 85,714 once its
+#     units are counted
+#
+# This establishes the lower bound for M. Seven Workers need M >= 9 before a
+# map task fits within the deadline. m21-r7 cuts the same corpus into smaller
+# pieces.
+#
+# RUNS ONLY AFTER `dissaly adopt`. The paths below are the post-adoption ones
+# (src/mapreduce/..., not src/main/java/mapreduce/...), because that is when
+# there is a simulator to run them.
+#
+#     ./dissaly simulate simulations/m7-r7.yaml
+seed: 5
+
+nodes:
+  client:
+    instance: m5.large
+    zone: eu-central-1a
+    runs:
+      dissaly.Job:
+        file:   src/infrastructure/DissalyUserProgram.java
+        config: { mapTasks: 7, reduceTasks: 7 }
+
+  master:
+    instance: m5.large
+    zone: eu-central-1a
+    runs: { mapreduce.Master: src/infrastructure/DissalyMaster.java }
+
+  w:
+    count: 7
+    prefix: w
+    instance: c5.large
+    zone: eu-central-1a
+    runs:
+      mapreduce.Worker:    src/mapreduce/Worker.java
+      mapreduce.Heartbeat: src/mapreduce/Heartbeat.java
+
+network:
+  sameZone:  2 refMs
+  crossZone: 12 refMs
+  jitter:    0.5 refMs
+
+# count is Input.count in Job.Load. M and R sit in the client's runs: entry,
+# because they configure that program rather than saying what there is to count.
+input:
+  unit:  word
+  count: 10000000
+
+simulatedDuration:
+  src/mapreduce/Worker.java:
+    # fixed is what one task costs whatever its size, so it is what a larger M
+    # multiplies. perUnit is per word, and Shuffle.store reports the count.
+    RunMapTask:    { fixed: 20 refMs, perUnit: 60000 refNs }
+    RunReduceTask: { fixed: 20 refMs }
+    # One shuffle read. A job makes M x R of them, all inside the Reduce phase.
+    Fetch:         { fixed: 30 refMs }
+  src/mapreduce/Heartbeat.java:
+    Ping: { fixed: 1 refMs }
+  src/infrastructure/DissalyMaster.java:
+    RunJob:   { fixed: 10 refMs }
+    Progress: { fixed: 1 refMs }

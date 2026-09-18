@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "redhat.vscode-yaml",
+    "zxh404.vscode-proto3",
+    "spencerwmiles.vscode-task-buttons"
+  ]
+}

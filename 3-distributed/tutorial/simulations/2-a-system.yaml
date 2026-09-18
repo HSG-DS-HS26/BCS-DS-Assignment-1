@@ -1,0 +1,43 @@
+# Four nodes running the program from the first simulation.
+#
+# The Java matches 1-one-call.yaml. This file changes the cluster configuration.
+#
+# These settings affect time and cost:
+#
+#   count/prefix  one entry creates four nodes, named w0 to w3. peersServing()
+#                 returns all four, and the job distributes images around them.
+#   zone          two nodes are in 1b. A cross-zone call takes four times as
+#                 long and incurs egress cost. Open Cost.
+#   the album     each node holds its own quarter of the thumbnails. Open
+#                 Usage -> Memory and compare with 1-one-call, where one node
+#                 held all forty.
+seed: 1
+
+nodes:
+  master:
+    instance: m5.large
+    zone: eu-central-1a
+    runs: { dissaly.Job: src/thumbs/ThumbJob.java }
+
+  w:
+    count: 4
+    prefix: w
+    instance: c5.large
+    zone: [eu-central-1a, eu-central-1a, eu-central-1b, eu-central-1b]
+    runs: { Shrinker: src/thumbs/Shrinker.java }
+
+network:
+  sameZone: 0.2 refMs
+  crossZone: 0.8 refMs
+  jitter: 0.1 refMs
+
+# Use the forty images from the first simulation. The system is the variable, so
+# the results can be compared.
+input:
+  unit:  image
+  count: 40
+
+simulatedDuration:
+  src/thumbs/Shrinker.java:
+    Thumbnail: { fixed: 0.4 refMs, perUnit: 55000 refNs }
+    Collect:   { fixed: 1 refMs }

@@ -1,0 +1,19 @@
+# Everything a run produces. Your traces are yours and are not handed in; the
+# examiner re-runs your code rather than reading a picture you exported.
+build/
+
+gen/
+
+2-mapreduce/solution-*.txt
+
+*-submission.pdf
+
+
+.DS_Store
+*.class
+bin/
+
+lib
+
+
+.gradle/

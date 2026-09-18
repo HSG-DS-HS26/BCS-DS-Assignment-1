@@ -1,0 +1,62 @@
+{
+  // Task 1 and the manual start when the container opens. The tutorial and
+  // exercise have a console after `dissaly adopt`.
+  "name": "Decentralized Systems - Assignment 1",
+
+  // The image provides JDK 25.
+  "image": "mcr.microsoft.com/devcontainers/java:25-bookworm",
+
+  // Task 1 needs the simulator toolchain. Retry the download, then keep the
+  // container usable if it remains unavailable.
+  "postCreateCommand": "for i in 1 2 3; do ./gradlew dissalyToolchain && exit 0; echo \"setup attempt $i failed, retrying in 10s\"; sleep 10; done; echo; echo 'The simulator toolchain did not resolve, so the Task 1 console on port 19841 and the manual on port 19844 will not start.'; echo 'Run  ./gradlew dissalyToolchain  in a terminal once the network settles, then reload the window.'",
+
+  // Keep console servers in the foreground. VS Code stops child processes when
+  // a lifecycle command ends; their output remains visible in this panel.
+  "postAttachCommand": {
+    "spot": ".devcontainer/console.sh 1-spot serve --root 1-spot --port 19841",
+    "manual": ".devcontainer/console.sh 1-spot serve docs --port 19844",
+    "tutorial": "cd 3-distributed/tutorial && if [ -x ./dissaly ]; then JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true exec ./dissaly serve --port 19842; else echo 'The tutorial is still a plain gRPC program, so there is no console for it yet.'; echo 'Work through 3-distributed/tutorial/README.md: type it, run it on 50052, then adopt it.'; fi; exit 0",
+    "exercise": "cd 3-distributed/exercise && if [ -x ./dissaly ]; then JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true exec ./dissaly serve --port 19843; else echo 'Task 3 is still a plain gRPC program, so there is no console for it yet.'; echo 'Run  ./gradlew run  in a terminal: it starts the machines, runs one job and exits.'; echo 'Then run dissaly adopt. See 3-distributed/exercise/README.md for the command.'; fi; exit 0"
+  },
+
+  // Browser consoles use these fixed host ports. gRPC servers stay inside the
+  // container. `appPort` publishes each port without a separate VS Code forward.
+  "appPort": [19841, 19842, 19843, 19844],
+  "portsAttributes": {
+    "19841": { "label": "Task 1 console", "onAutoForward": "openPreview" },
+    "19842": { "label": "tutorial console (after adopt)", "onAutoForward": "notify" },
+    "19843": { "label": "exercise console, Task 3 (after adopt)", "onAutoForward": "notify" },
+    "19844": { "label": "dissaly manual", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "redhat.vscode-yaml",
+        "zxh404.vscode-proto3",
+        // Task 3's architecture diagram uses `.drawio` or `.drawio.png` files.
+        "hediet.vscode-drawio",
+        // The "Hand in" button in the status bar; see .vscode/settings.json.
+        "spencerwmiles.vscode-task-buttons",
+        // Pair work: one partner shares this Codespace with Live Share, the
+        // other joins from the browser without a Codespace of their own.
+        "ms-vsliveshare.vsliveshare"
+      ],
+
+      // These paths exist only inside the container.
+      "settings": {
+        // The Java feature's default Gradle JDK path is absent in this image.
+        "java.import.gradle.java.home": "/usr/lib/jvm/msopenjdk-current",
+
+        // Start folder-open console tasks without a confirmation prompt.
+        "task.allowAutomaticTasks": "on",
+
+        // Detect console ports from processes.
+        "remote.autoForwardPortsSource": "process"
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}

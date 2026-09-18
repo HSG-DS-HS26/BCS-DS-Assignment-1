@@ -1,0 +1,359 @@
+// Configures Java tooling for the simulator and its dependencies.
+
+// ------------------------------------------------------------------- the simulator
+//
+// dissaly is resolved by coordinate. Its version is declared here, and
+// `./gradlew` fetches it.
+//
+// dissaly publishes its Maven tree on the `maven-repo` branch of its repository.
+// That repository is still named `losim`, which is what the simulator was called
+// before 4.0.0; only the artifact, the packages and the command are `dissaly`.
+// This build reads the public tree over HTTPS, so students can compile without
+// credentials. GitHub Packages requires a token.
+def dissalyVersion = '4.1.1'
+
+allprojects {
+    repositories {
+        maven {
+            url = uri('https://raw.githubusercontent.com/Interactions-HSG/losim/maven-repo/')
+            // Ask this repository for dissaly only. Without the filter, Gradle
+            // also tries raw.githubusercontent for grpc and guava before Central.
+            content { includeGroup 'io.github.interactions-hsg' }
+        }
+        // dissaly's POM supplies grpc, protobuf, gson, and guava. Handlers import
+        // these dependencies directly.
+        mavenCentral()
+    }
+}
+
+// ---------------------------------------------------------------- the projects
+//
+// This build contains the assignment's Java projects; the dissaly projects build
+// themselves.
+//
+//   Task 2 is **plain Java**. It is the sequential version of the computation and
+//   compiles against the JDK alone. An import such as `dissaly.api.Dissaly` in
+//   2-mapreduce therefore causes a compile error.
+//
+//   Everything under `3-distributed/` is outside this build. The worked example and
+//   Task 3 each have their own `settings.gradle` and wrapper because `dissaly adopt`
+//   requires a single-module build. Their independent builds also isolate
+//   compilation failures.
+//
+// Task 1 is `1-spot`, the only dissaly lab this build compiles: its
+// own `src/`, its own scenarios. It is not in `plainJava` below, so it is
+// compiled against the simulator, which lets a student press Run on
+// each of the two systems and read what happened.
+def plainJava = [':2-mapreduce']
+
+allprojects {
+    apply plugin: 'java'
+
+    // Gradle's output goes under this project's own build/, and into a dot-folder
+    // so it does not sit among the traces dissaly writes there.
+    //
+    // **Each project's own.** This used to point every subproject at
+    // `rootProject/build/.gradle/<name>`, which put `:1-spot`'s output outside
+    // the `1-spot` directory. Gradle does not mind. Eclipse does: a Java
+    // project's output folder has to be inside the project, so Buildship could
+    // not create either subproject, and the Java extension then reported
+    //
+    //   The project was not built due to "1-spot does not exist"
+    //
+    // for directories that were plainly there. It survived container rebuilds and
+    // language-server cleans because the cause was regenerated from this line
+    // every time the build model was read.
+    layout.buildDirectory = layout.projectDirectory.dir('build/.gradle')
+
+    // `release` pins the language level without Gradle fetching a JDK. The
+    // container and supported local environment use Java 25.
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 25
+        options.encoding = 'UTF-8'
+    }
+
+    // Every system project, including the root project, resolves this dependency.
+    // `dissalyToolchain` declares the resolved graph to the console.
+    if (!(project.path in plainJava)) {
+        dependencies {
+            implementation "io.github.interactions-hsg:dissaly:$dissalyVersion"
+        }
+    }
+}
+
+// Each dissaly system keeps handwritten code in `src/` and protoc output in `gen/`.
+// `gen/` is git-ignored and does not exist until protoc runs.
+//
+// The plain-Java project has no schema and therefore no `gen/` directory.
+// Gradle and `dissaly.cli.Lab` select source files differently. A green Gradle
+// build therefore confirms only the files selected by Gradle. Gradle takes
+// every package under `src/`; dissaly does not take quite the same set. It keeps
+// a list of directory names it reads as data rather than code, including
+// `build`,
+// `lib`, `docs`, `viewer`, `node_modules`, `presentation`, `gen`, `out`,
+// `classes`, `input`, `corpus`, and `scenarios`. A lab that keeps its sources
+// at its root rather than under `src/` has all twelve reserved there.
+//
+// dissaly excludes `gen/` when selecting handwritten sources and compiles protoc
+// output there normally.
+//
+// Before 1.1.2, the list applied at every depth, so `src/input/Foo.java`
+// compiled here but was excluded from a run. The error named the caller's
+// import instead of the skipped file. That is how the
+// given corpus shipped as `input.Corpus`: every check run against it was a
+// Gradle check, and every one was green. It surfaced only once it was compiled
+// through `Lab`. 1.1.2 made the rule root-only and made a skip say so.
+//
+// When something builds here and fails on the console, check whether the two
+// tools are compiling the same files.
+configure(subprojects) {
+    sourceSets.main.java.srcDirs = project.path in plainJava ? ['src'] : ['src', 'gen']
+    sourceSets.main.resources.srcDirs = []
+}
+
+// Task 2 runs as a plain Java program. Run `Main.java` in an IDE, or run the
+// job-specific file in `src/jobs/` while developing one job. Each job runner
+// compiles independently of the others. `workingDir` is
+// the repository root because the jobs read `2-mapreduce/input/` and write beside it.
+//
+// `test/` contains properties for the two functions. It runs as plain Java with a
+// `main` method and no test framework.
+configure(project(':2-mapreduce')) {
+    apply plugin: 'application'
+    application { mainClass = 'Main' }
+    sourceSets.test.java.srcDirs = ['test']
+    sourceSets.test.resources.srcDirs = []
+    tasks.named('run') { workingDir = rootDir }
+
+    // `./gradlew :2-mapreduce:invariants`, or run Invariants.java in your IDE.
+    tasks.register('invariants', JavaExec) {
+        group = 'verification'
+        description = 'Properties your map and reduce should have.'
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = 'Invariants'
+        workingDir = rootDir
+    }
+}
+
+// The root project has no Java. It resolves one dependency graph and
+// `dissalyToolchain` declares it to the console. The systems compile as
+// subprojects.
+//
+// The root project has no `main`. Simulations run from consoles: Task 1 uses
+// 19841, the tutorial uses 19842, and Task 3 uses 19843 after adoption. One
+// console per system keeps the launch paths aligned.
+sourceSets.main.java.srcDirs = []
+sourceSets.main.resources.srcDirs = []
+
+// ----------------------------------------------------- telling dissaly what we have
+//
+// The console is the simulator's own command line, and it has to compile and run
+// a lab: it needs the classpath and it needs protoc. It used to find both by
+// reading `<lab>/lib`, a directory of jars, which a build that resolves its
+// dependencies does not have and cannot sensibly be given, because the jars are
+// scattered through a package cache under names the cache chose.
+//
+// A build may *declare* the toolchain instead. It writes
+// `<lab>/build/dissaly-toolchain.properties`:
+//
+//     dissaly=4.0.2
+//     classpath=/…/dissaly-4.0.2.jar:/…/grpc-api-1.83.1.jar:…
+//     protoc=/…/protoc-osx-aarch_64
+//     protoc-gen-grpc-java=/…/protoc-gen-grpc-java-osx-aarch_64
+//
+// `Lab.isLab()` is true when that file names a classpath, and `Lab.cp()` returns
+// it. A directory is a lab when this build declares a classpath for it.
+//
+// The file is written from the build's own resolved graph rather than from a
+// list restated here, so it cannot drift from what `./gradlew` compiles against.
+// It contains absolute paths and therefore lives under `build/` and stays out
+// of version control. A copy moved to another machine contains invalid paths;
+// rerun the build to create a local file.
+//
+//     ./gradlew dissalyToolchain
+//
+// The container runs this on create. It copies the two compilers because Maven
+// does not preserve their execute bits.
+//
+// `<lab>/build/dissaly/classpath` contains the same list as one plain line for
+// `./dissaly`. The files support different readers: `java.util.Properties`
+// escapes `:`, so a shell cannot read the `.properties` classpath directly.
+def protobufVersion = '4.36.0'   // must match what dissaly's POM resolves
+def grpcVersion = '1.83.1'
+
+// This matches `dissaly.cli.Lab.platform()` and Maven Central's classifier so
+// dissaly can find the compiler for the current platform.
+def dissalyPlatform = {
+    String os = System.getProperty('os.name', '').toLowerCase(Locale.ROOT)
+    String arch = System.getProperty('os.arch', '').toLowerCase(Locale.ROOT)
+    String cpu = arch in ['aarch64', 'arm64'] ? 'aarch_64'
+               : arch in ['amd64', 'x86_64'] ? 'x86_64' : arch
+    if (os.contains('mac') || os.contains('darwin')) return "osx-$cpu"
+    if (os.contains('win')) return "windows-$cpu"
+    return "linux-$cpu"
+}()
+
+configurations {
+    // The two code generators are programs, not application dependencies.
+    protocTools
+}
+
+dependencies {
+    protocTools "com.google.protobuf:protoc:$protobufVersion:$dissalyPlatform@exe"
+    protocTools "io.grpc:protoc-gen-grpc-java:$grpcVersion:$dissalyPlatform@exe"
+}
+
+// These are projects with code that uses the simulator. The set is derived from
+// each project's `src/` directory, so standalone builds under `3-distributed/` remain
+// outside the root build.
+def dissalyLabs = {
+    subprojects.findAll { !(it.path in plainJava) && new File(it.projectDir, 'src').directory }
+               .collect { it.projectDir }
+}
+
+tasks.register('dissalyToolchain') {
+    group = 'dissaly'
+    description = 'Declares the resolved classpath and compilers to dissaly. The container runs it for you.'
+
+    def cp = configurations.runtimeClasspath
+    def tools = configurations.protocTools
+    def toolsDir = layout.projectDirectory.dir('build/dissaly-tools').asFile
+    def labs = dissalyLabs()
+    def plat = dissalyPlatform
+    def version = dissalyVersion
+
+    inputs.files(cp, tools)
+    outputs.files(labs.collect { new File(it, 'build/dissaly-toolchain.properties') }
+                + labs.collect { new File(it, 'build/dissaly/classpath') })
+
+    doLast {
+        // Copy the compilers under the names dissaly expects and set their execute
+        // bits. Maven stores the binaries in its package cache without those
+        // bits.
+        toolsDir.mkdirs()
+        var named = [:]
+        tools.resolvedConfiguration.resolvedArtifacts.each { a ->
+            String name = a.moduleVersion.id.name == 'protoc' ? "protoc-$plat"
+                                                              : "protoc-gen-grpc-java-$plat"
+            File to = new File(toolsDir, name)
+            if (!to.exists() || to.length() != a.file.length()) to.bytes = a.file.bytes
+            to.setExecutable(true, false)
+            named[a.moduleVersion.id.name] = to
+        }
+
+        String text = "dissaly=" + version + "\n" +
+                      "classpath=" + cp.asPath + "\n" +
+                      "protoc=" + named['protoc'] + "\n" +
+                      "protoc-gen-grpc-java=" + named['protoc-gen-grpc-java'] + "\n"
+
+        // One file per lab, because dissaly reads it relative to the lab it is
+        // serving. They say the same thing: there is one resolved graph here.
+        labs.each { dir ->
+            File f = new File(dir, 'build/dissaly-toolchain.properties')
+            f.parentFile.mkdirs()
+            f.text = text
+
+            // Write the same classpath as one line for the `./dissaly` shell script.
+            File plain = new File(dir, 'build/dissaly/classpath')
+            plain.parentFile.mkdirs()
+            plain.text = cp.asPath + "\n"
+
+            // Remove a stale `lib/` directory from an older template. The current
+            // build resolves simulator dependencies through Gradle.
+            File stale = new File(dir, 'lib')
+            if (java.nio.file.Files.isSymbolicLink(stale.toPath())) java.nio.file.Files.delete(stale.toPath())
+            else if (stale.directory) stale.deleteDir()
+        }
+        logger.lifecycle("declared ${cp.files.size()} jars and protoc for $plat to ${labs.size()} labs.")
+    }
+}
+
+// Gradle and the editor resolve the coordinate directly, so completion and
+// jump-to-definition work before `dissalyToolchain` runs. Only the console needs
+// the generated directory.
+
+// ---------------------------------------------------------------- the exercises
+//
+// Launch tasks cover all builds. `1-spot` and `2-mapreduce` are subprojects, but
+// `3-distributed/exercise` and both tutorial stages have separate wrappers. The
+// tasks call those wrappers because `dissaly adopt` requires Task 3 to remain a
+// single-module build.
+def exercises = 'assignment'
+
+def wrapperIn = { String path ->
+    def dir = file(path)
+    def windows = System.getProperty('os.name').toLowerCase().contains('windows')
+    [new File(dir, windows ? 'gradlew.bat' : 'gradlew').absolutePath, dir]
+}
+
+def launcher = { String name, String path, List<String> args, String what ->
+    tasks.register(name, Exec) {
+        group = exercises
+        description = what
+        def (String wrapper, File dir) = wrapperIn(path)
+        workingDir = dir
+        commandLine([wrapper] + args)
+    }
+}
+
+launcher('task2', '.', [':2-mapreduce:run'],
+        'Task 2: both MapReduce jobs, on one machine. Fails until you write Map and Reduce.')
+
+launcher('task2Invariants', '.', [':2-mapreduce:invariants'],
+        'Task 2: the properties your map and reduce should have. Not graded.')
+
+launcher('task3', '3-distributed/exercise', ['run'],
+        'Task 3: start the machines, run one job, print the answer. Expect 24 rows and 200000.')
+
+// Task 3 and the tutorial use separate Gradle builds. Run these tasks to compile
+// them from the assignment root.
+launcher('task3Compile', '3-distributed/exercise', ['compileJava'],
+        'Task 3: compile the code and schema.')
+
+launcher('tutorialCompile', '3-distributed/tutorial', ['compileJava'],
+        'Tutorial: compile the code and schema.')
+
+launcher('tutorialServer', '3-distributed/tutorial', ['run'],
+        'Tutorial stage 1: the gRPC server on port 50052. Leave it running.')
+
+launcher('tutorialClient', '3-distributed/tutorial', ['client'],
+        'Tutorial stage 1: the client. Run it while the server above is up.')
+
+// ------------------------------------------------------------------ consoles
+//
+// These are the consoles the devcontainer starts on attach. You can also start
+// them from the Gradle panel or after freeing a port. Each blocks until stopped.
+//
+// The two lab consoles require an adopted project and report that requirement.
+
+def console = { String name, String script, String what ->
+    tasks.register(name, Exec) {
+        group = exercises
+        description = what
+        workingDir = rootDir
+        commandLine 'sh', '-c', script
+    }
+}
+
+// `JAVA_TOOL_OPTIONS` matches `console.sh` and makes JVM server sockets bind
+// IPv4, which VS Code's port scanner detects. `dissaly adopt` generates
+// `./dissaly`, so the setting is passed through the environment.
+def ipv4 = 'JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true'
+
+console('task1Console', '.devcontainer/console.sh 1-spot serve --root 1-spot --port 19841',
+        'Task 1: the console over 1-spot, on port 19841.')
+
+// `serve docs` defaults to port 3000, so the manual port is explicit here.
+console('manual',
+        '.devcontainer/console.sh 1-spot serve docs --port 19844',
+        'The simulator manual, on port 19844.')
+
+console('tutorialConsole',
+        'cd 3-distributed/tutorial && if [ -x ./dissaly ]; then ' + ipv4 + ' ./dissaly serve --port 19842;' +
+        ' else echo "Adopt the tutorial first — see 3-distributed/tutorial/README.md."; fi',
+        'Tutorial: the console on port 19842, once you have adopted it.')
+
+console('task3Console',
+        'cd 3-distributed/exercise && if [ -x ./dissaly ]; then ' + ipv4 + ' ./dissaly serve --port 19843;' +
+        ' else echo "Adopt Task 3 first — see 3-distributed/exercise/README.md."; fi',
+        'Task 3: the console on port 19843, once you have adopted it.')

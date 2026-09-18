@@ -1,0 +1,65 @@
+{
+  // Java tools read the classpath from build.gradle. This setting reloads it
+  // when the file changes. Task 3 has its own Gradle project.
+  "java.configuration.updateBuildConfiguration": "automatic",
+
+  // Compiler problem severities. `gen/` is a source folder because the project
+  // compiles the Java protoc writes, so the Java extension lints generated code
+  // and reports things nobody can fix. jdt.prefs turns off the four optional
+  // checks protobuf trips and explains each one.
+  "java.settings.url": ".vscode/jdt.prefs",
+
+  // `java.project.outputPath` is deliberately NOT set here, and setting it is
+  // what caused "the project was not built due to \"1-spot does not exist\"".
+  //
+  // Neither `1-spot` nor `2-mapreduce` has a build.gradle of its own — the root
+  // build configures them — so the Java extension imports them as unmanaged
+  // folders rather than as Gradle projects, and for an unmanaged folder it
+  // honours `java.project.outputPath`. Pointing that at `build/.vscode` put the
+  // output inside a directory `files.exclude` hides from the workspace, and the
+  // extension then reported the project itself as missing.
+  //
+  // Unset, an unmanaged folder compiles to `bin/`, which .gitignore already
+  // covers and settings.gradle already skips.
+
+  // Hide compiled classes and libraries. Keep generated protobuf sources visible.
+  // `lib/` remains here for older copies of the template.
+  "files.exclude": {
+    "**/build": true,
+    "**/bin": true,
+    "**/lib": true
+  },
+  "search.exclude": {
+    "**/build": true,
+    "**/lib": true,
+    "**/gen": true
+  },
+
+  // Scenario validation belongs to the loader and console. Keeping a second
+  // copy in `yaml.schemas` could let editor checks drift from runtime checks.
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.rulers": [100],
+
+  // Status bar buttons, from the Task Buttons extension. Each runs the task of
+  // the same name in tasks.json.
+  //
+  // "Compile Task 3" exists because nothing else compiles `3-distributed/`
+  // while you type: both halves are separate Gradle builds, which the root
+  // build skips and the Java extension therefore does not import, so the
+  // Problems panel stays empty however broken your code is. Press the button
+  // after every few edits. Opening `assignment.code-workspace` instead of the
+  // repository folder gives you live errors there as well.
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(check) Compile Task 3",
+      "task": "Task 3: compile",
+      "tooltip": "Compiles 3-distributed/exercise. The editor does not do this for you unless you opened assignment.code-workspace."
+    },
+    {
+      "label": "$(cloud-upload) Hand in",
+      "task": "Hand in: write the PDF for Canvas",
+      "tooltip": "Commit and push first. Then this writes the PDF you upload to Canvas."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# One machine dies after it has finished mapping, while it is still holding the
+# pairs it produced.
+#
+#     ./dissaly simulate simulations/m21-r7.yaml --overlay simulations/overlay-kill.yaml
+#
+# This is the case the recovery path exists for. w3 stops answering; the reduce
+# task that needs its groups fails; RunJob asks every holder whether it is still
+# there, writes w3 off, and remap() re-runs exactly the map tasks it was holding
+# somewhere else. Watch `tasksReexecuted` and `workersFailed` in the result.
+#
+# It applies unchanged to any base scenario in this directory, which is the
+# point of keeping it out of them: the failure stays the same while M and R move.
+nodes:
+  w3:
+    failures:
+      - { kill: true, at: 120 refMs }

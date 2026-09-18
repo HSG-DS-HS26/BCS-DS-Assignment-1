@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package thumbs;
+
+option java_package = "thumbs";
+option java_multiple_files = true;
+
+// Example service contract.
+service Shrinker {
+
+  // Shrinks an image. Work scales with the pixel count.
+  //
+  // IDEMPOTENT: the same image produces the same thumbnail without changing
+  // state. dissaly can retry this rpc. Setting `unsafe: true` permits retries
+  // for an rpc that the schema does not mark as safe.
+  rpc Thumbnail (Image) returns (Thumb) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // Returns the thumbnails made by this node in one message.
+  //
+  // NO_SIDE_EFFECTS: the call leaves state unchanged. The response grows as
+  // more images are shrunk, so repeated calls may return different albums.
+  rpc Collect (Empty) returns (Album) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message Empty {}
+
+// `Job.Load` builds this value and `Job.Run` processes it. dissaly's `Workload`
+// carries a type name and bytes for this job.
+message Split {
+  int32 images = 1;
+  // Pixels for one image, reused for each item to keep image content fixed
+  // during cluster measurements.
+  bytes pixels = 2;
+}
+
+message Image {
+  string id = 1;
+  bytes pixels = 2;
+}
+
+message Thumb {
+  string id = 1;
+  int32 bytes = 2;
+  // Node that produced the thumbnail.
+  string from = 3;
+}
+
+// Thumbnails produced by this node.
+message Album {
+  string from = 1;
+  repeated Thumb thumbs = 2;
+  int64 total_bytes = 3;
+}

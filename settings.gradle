@@ -1,0 +1,46 @@
+// This repository contains several Java projects. Task 2 is plain Java, Task 1
+// is a dissaly lab, and projects under `3-distributed/` use their own builds.
+//
+// Task 1 is `1-spot`, a key-value store built twice. Its `src/` directory makes
+// it a project. Students run it but do not modify it.
+//
+// Each folder with `src/` becomes a subproject. The walk stops at that folder, so
+// a directory inside a lab cannot become another project.
+//
+// `build.gradle` selects dependencies for each project. Task 2 has no simulator
+// dependency.
+
+rootProject.name = 'BCS-DS-Assignment-1'
+
+// Exclude the simulator, its output, documentation, and generated code.
+//
+// `master-solution` is git-ignored and exists only for instructors. It contains
+// another Task 2 source tree, whose project name collides with `:2-mapreduce` in
+// the IDE's flattened workspace.
+def notSystems = ['build', 'bin', 'lib', 'viewer', 'docs', 'gen', 'src', 'test', 'input',
+                  '5-presentation', 'master-solution']
+
+// A directory with its own `settings.gradle` or `settings.gradle.kts` is a
+// separate build, not a subproject or a directory to walk.
+//
+// Task 3 is a separate gRPC build before adoption and remains separate after
+// adoption. `dissaly adopt` writes `build.gradle.kts` and requires a
+// single-module tree.
+def ownBuild = { File dir -> new File(dir, 'settings.gradle').file || new File(dir, 'settings.gradle.kts').file }
+
+def findSystems
+findSystems = { File dir, String prefix ->
+    dir.listFiles()?.findAll {
+        it.directory && !it.name.startsWith('.') && !(it.name in notSystems) && !ownBuild(it)
+    }?.sort { it.name }?.each { File child ->
+        String path = prefix ? "$prefix/$child.name" : child.name
+        if (new File(child, 'src').directory) {
+            String id = ':' + path.replace('/', ':')
+            include id
+            project(id).projectDir = child
+        } else {
+            findSystems(child, path)
+        }
+    }
+}
+findSystems(rootDir, '')

@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package mapreduce;
+
+option java_package = "mapreduce.pb";
+option java_multiple_files = true;
+
+// Pair and the job parameters are declared in infrastructure.proto. Reuse them.
+// The Master service is declared there too; do not add it here.
+import "infrastructure.proto";
+
+// =============================================================== provided ==
+//
+// This file defines the RPCs and protobuf messages that let the Master and
+// Workers communicate. Machines do not share memory, so requests and replies
+// must carry every fact their receiver needs.
+//
+// infrastructure/Master.java sends Ping on PING_MS rather than TASK_MS.
+// infrastructure/GrpcUserProgram.java creates Worker and Heartbeat with no
+// constructor arguments. JobContext defines the facts the Master can send to a
+// Worker.
+//
+// The Worker service below includes Fetch, which implements Shuffle & Sort.
+// infrastructure/Shuffle.java implements its handler.
+
+service Worker {
+
+  // Fetch transfers one map task's group p to the Worker running reduce task p.
+  // It is the only RPC between Workers.
+  //
+  // NO_SIDE_EFFECTS allows scenarios to retry Fetch.
+  rpc Fetch (ShuffleRequest) returns (ShuffleReply) { option idempotency_level = NO_SIDE_EFFECTS; }
+
+  // TODO(student): Add RunMapTask and RunReduceTask here. Their names and
+  // request/reply message names appear in the student work section below.
+}
+
+// ShuffleRequest and ShuffleReply are used by infrastructure/Shuffle.java.
+message ShuffleRequest {
+  int32 task = 1;
+  int32 partition = 2;
+}
+
+message ShuffleReply {
+  string from = 1;
+  repeated Pair pairs = 2;
+
+  // False when this Worker does not hold the requested map task. A Worker can
+  // reply successfully without holding the task.
+  bool found = 3;
+}
+
+
+// =========================================================== student work ==
+//
+// TODO(student): Define the required RPCs and messages. Choose their fields
+// and add a short purpose comment above each message.
+//
+// The names below are fixed because simulations refer to them. Use them exactly;
+// `./gradlew compileJava` reports missing declarations.
+//
+//   Worker
+//     RunMapTask:    MapTask -> MapDone
+//     RunReduceTask: ReduceTask -> ReduceDone
+//
+//   Heartbeat
+//     Ping: Beat -> Alive
+//
+// TODO(student): Declare the Heartbeat service with Ping and define Beat and
+// Alive. Master.java already makes this call.
+
+
+// TODO(student): Define MapTask, MapDone, ReduceTask, ReduceDone, Beat, and
+// Alive below.
+//
+// The two tasks, as types. k1 = the map task index t, v1 = piece t,
+// k2 = a word, v2 = its count (Pair: string key, int64 value).
+//
+//   map task    : (t, piece t)                        -> R groups of (k2, v2), kept on this machine
+//   reduce task : (p, group p of map tasks 0..M-1)    -> list(k2, v2), sorted by k2
+//
+// infrastructure/Shuffle.java lists the functions inside each task.
+//
+// TODO(student): MapTask and MapDone
+//
+//     What does a machine need to be told to produce the counts for piece t,
+//     given that it has infrastructure/Corpus.java locally and nothing else?
+//     Every candidate fact is a JobContext method; use the smallest set that
+//     works. Watch for facts that only a machine with somebody to call would
+//     need.
+//
+//     What does the Master need back? It has to learn the task is done, and it
+//     has to know which machine is now holding those pairs so that it can re-run
+//     the right work after a failure. Justify anything beyond that.
+//
+// TODO(student): ReduceTask and ReduceDone
+//
+//     What does a machine need to run reduce task p? It has to reach every map
+//     task's output, and JobContext knows where each one ended up.
+//
+//     How large can the reply get? Twenty-four words here; the paper's workloads
+//     do not fit in one reply, and Task 4 can ask what you would do then.
+//
+//     The failure that matters: a machine that cannot assemble its input has to
+//     fail the call. The Master sums these replies, so a partial one is added to
+//     the total and nothing notices. Do not let the reply express a partial
+//     result.
+//
+// TODO(student): Beat and Alive
+//
+//     Read the call in infrastructure/Master.java. What a returned ping actually
+//     guarantees, and what the handler is allowed to touch on its way out, is a
+//     Task 4 question: "still alive" and "still working" are different claims.
+//
+// TODO(student): State each message's purpose in its comment. Task 4 reads this
+// prose.

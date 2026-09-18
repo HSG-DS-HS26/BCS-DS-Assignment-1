@@ -1,0 +1,25 @@
+NVIDIA	OpenAI Anthropic xAI CoreWeave Nebius SSI Mistral Cohere Perplexity ScaleAI FigureAI Wayve Nscale Crusoe Waabi KoreAI HuggingFace ReflectionAI ThinkingMachines Inflection Baseten Astrocade CHARM Firmus Sarvam
+Microsoft	OpenAI Anthropic FigureAI Wayve Inflection
+Alphabet	Anthropic SSI Astrocade
+Qualcomm	Anthropic FigureAI
+SoftBank	OpenAI Wayve Perplexity
+a16z	xAI Mistral SSI OpenAI Databricks TogetherAI Cursor ElevenLabs CharacterAI Groq Harvey Vanta
+Sequoia	xAI Astrocade
+Fidelity	xAI OpenAI CoreWeave
+Coatue	OpenAI CoreWeave
+ThriveCapital	OpenAI
+Lightspeed	Mistral SSI
+Amazon	FigureAI
+JeffBezos	Perplexity FigureAI
+OpenAI	FigureAI Cursor AmbienceHealthcare OneX Harvey Speak
+Uber	Wayve Waabi
+KhoslaVentures	Waabi
+BerkshireHathaway	Apple AmericanExpress CocaCola Alphabet BankOfAmerica Chevron OccidentalPetroleum KraftHeinz Moodys DeltaAirlines Lennar Macys NYTimes
+FoundersFund	SpaceX Palantir Anduril Stripe Rippling Neuralink
+Tesla	xAI
+SpaceX	xAI
+Chevron	ChargePoint Illumina Eavor
+AmericanExpress	Stripe Plaid Abra
+Databricks	AppliedComputing Tsuga OpenRouter
+Palantir	ShieldAI Lilium SarcosRobotics RoivantSciences Celularity AppliedAI SpindleAI
+Stripe	TrueLayer Monzo Rapyd Balance PayMongo

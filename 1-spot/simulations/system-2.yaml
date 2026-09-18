@@ -1,0 +1,45 @@
+# ============================================================
+# System 2
+# ============================================================
+
+seed: 7
+
+nodes:
+  client:
+    instance: m5.large
+    zone: eu-central-1a
+    runs: { dissaly.Job: src/spot/Client.java }
+
+  dublin:
+    instance: c5.large
+    zone: eu-west-1a
+    runs: { Copy: src/spot/Kestrel.java }
+
+  frankfurt:
+    instance: c5.large
+    zone: eu-central-1b
+    runs: { Copy: src/spot/Kestrel.java }
+
+  zurich:
+    instance: c5.large
+    zone: switzerlandnorth-1
+    runs: { Copy: src/spot/Kestrel.java }
+    failures:
+      - { partition: dublin, at: 1500 refMs }
+      - { partition: frankfurt, at: 1500 refMs }
+      - { heal: dublin, at: 5500 refMs }
+      - { heal: frankfurt, at: 5500 refMs }
+
+input:
+  unit: round
+  count: 20
+
+network:
+  sameZone: 1 refMs
+  crossZone: 6 refMs
+  jitter: 0.5 refMs
+
+simulatedDuration:
+  src/spot/Kestrel.java:
+    Write: { fixed: 3 refMs }
+    Read:  { fixed: 1 refMs }

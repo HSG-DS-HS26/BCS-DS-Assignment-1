@@ -1,0 +1,6 @@
+// Define the service schema before writing the generated Java, server, or client.
+//
+// See 3-distributed/tutorial/README.md, "Stage 1: the plain gRPC program", and
+// .solution/plain/proto/thumbs.proto.
+//
+// Read the solution, then type this file for practice.

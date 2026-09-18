@@ -1,0 +1,27 @@
+# Three machines of seven are slow, by different amounts, and none of them stops
+# answering.
+#
+#     ./dissaly simulate simulations/m21-r7.yaml --overlay simulations/overlay-stragglers.yaml
+#
+# Compare this with `overlay-straggler.yaml`. The Master assigns a Worker's next
+# task when it completes the current one. Slow Workers receive fewer tasks while
+# healthy Workers continue to take work. Compare the durations and completed map
+# task counts.
+#
+# The queue cannot make an oversized task fit within its deadline. See
+# `overlay-straggler.yaml` for the effect of M on task duration.
+nodes:
+  w1:
+    failures:
+      - { degrade: 2, at: 60 refMs }
+  w3:
+    failures:
+      - { degrade: 3, at: 60 refMs }
+  w5:
+    failures:
+      - { degrade: 4, at: 60 refMs }
+
+# Fetch carries idempotency_level = NO_SIDE_EFFECTS, which is what allows it to
+# be retried at all. Naming a task rpc here is refused before the run starts.
+retries:
+  - { method: Fetch, attempts: 2, backoff: 100 refMs, multiplier: 2 }

@@ -1,0 +1,167 @@
+{
+  // Run these commands with Terminal -> Run Task. Each delegates to the root
+  // Gradle build. Stop a running console before restarting it.
+  //
+  // `command` is what runs in a Codespace or the Dev Container, which is where we
+  // recommend you work. `windows.command` is the same task on a Windows host,
+  // where VS Code runs it in PowerShell.
+  "version": "2.0.0",
+
+  "tasks": [
+    // Task 1
+    {
+      "label": "Task 1: console over the two stores (port 19841)",
+      "detail": "Run both scenarios and compare them under Runs.",
+      "type": "shell",
+      "command": "./gradlew task1Console",
+      "windows": { "command": ".\\gradlew.bat task1Console" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // Task 2
+    {
+      "label": "Task 2: run both MapReduce jobs",
+      "detail": "Fails until you have written Map and Reduce. That is the exercise.",
+      "type": "shell",
+      "command": "./gradlew task2",
+      "windows": { "command": ".\\gradlew.bat task2" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Task 2: check the invariants",
+      "detail": "Checks properties of your map and reduce. This task is not graded.",
+      "type": "shell",
+      "command": "./gradlew task2Invariants",
+      "windows": { "command": ".\\gradlew.bat task2Invariants" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // Tutorial
+    {
+      "label": "Tutorial: compile",
+      "detail": "Compiles the tutorial schema and your Java, and puts the errors in the Problems panel. Same reason as Task 3.",
+      "type": "shell",
+      "command": "./gradlew tutorialCompile",
+      "windows": { "command": ".\\gradlew.bat tutorialCompile" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": {
+        "owner": "java",
+        "source": "gradle",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^\\s*(\\S.*\\.java):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Tutorial stage 1: the gRPC server (port 50052)",
+      "detail": "Keep this running and start the client in another terminal.",
+      "type": "shell",
+      "command": "./gradlew tutorialServer",
+      "windows": { "command": ".\\gradlew.bat tutorialServer" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Tutorial stage 1: the gRPC client",
+      "detail": "Requires the tutorial server to be running.",
+      "type": "shell",
+      "command": "./gradlew tutorialClient",
+      "windows": { "command": ".\\gradlew.bat tutorialClient" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Tutorial stage 4: the console (port 19842, after you adopt)",
+      "type": "shell",
+      "command": "./gradlew tutorialConsole",
+      "windows": { "command": ".\\gradlew.bat tutorialConsole" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // Task 3
+    {
+      "label": "Task 3: compile",
+      "detail": "Compiles worker.proto and your Java, and puts the errors in the Problems panel. Nothing else checks Task 3 unless you opened assignment.code-workspace.",
+      "type": "shell",
+      "command": "./gradlew task3Compile",
+      "windows": { "command": ".\\gradlew.bat task3Compile" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": {
+        "owner": "java",
+        "source": "gradle",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^\\s*(\\S.*\\.java):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Task 3: run one job",
+      "detail": "Starts the machines, runs one job, prints the result, and exits. Expect 24 rows and 200000.",
+      "type": "shell",
+      "command": "./gradlew task3",
+      "windows": { "command": ".\\gradlew.bat task3" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Task 3: the console (port 19843, after you adopt)",
+      "type": "shell",
+      "command": "./gradlew task3Console",
+      "windows": { "command": ".\\gradlew.bat task3Console" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // Manual
+    {
+      "label": "Open the simulator manual (port 19844)",
+      "type": "shell",
+      "command": "./gradlew manual",
+      "windows": { "command": ".\\gradlew.bat manual" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // Hand in. Also the "Hand in" button in the status bar.
+    {
+      "label": "Hand in: write the PDF for Canvas",
+      "detail": "Commit and push first. Checks that GitHub has your work, then writes <you>-<repo>-submission.pdf to upload to Canvas.",
+      "type": "shell",
+      "command": "java submission/Submission.java",
+      "windows": { "command": "java submission\\Submission.java" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

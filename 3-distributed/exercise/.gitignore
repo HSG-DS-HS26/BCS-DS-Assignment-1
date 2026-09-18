@@ -1,0 +1,6 @@
+# Output files created by job runs.
+solution-*.txt
+
+# Keep an instructor solution out of repository history and student copies.
+# This also ignores any local solution directory in this project.
+solution/

@@ -1,0 +1,54 @@
+version: 1
+
+assignment: bcs-ds-1
+
+# The viva covers Tasks 1 to 3 and only the parts you wrote: your answers in
+# 1-spot/QUIZ.md, the Map and Reduce classes in Task 2, and in Task 3 the
+# messages in worker.proto, Worker.java, Heartbeat.java and the holes in
+# RunJob.java. Supplied code, the tutorial, the DISSALy adoption and Task 5 are
+# not examined.
+
+
+goals:
+  - id: cap-trade-offs
+    level: analyse
+    goal: >
+      Distinguish which guarantee each of the two stores gave up during the
+      partition. Use evidence from your own run to tell them apart, including a
+      refused write, a version that stopped advancing, or a replica frozen for
+      thousands rather than tens of milliseconds.
+
+  - id: programming-model
+    level: apply
+    goal: >
+      Implement a computation as a map and a reduce over key/value pairs of your
+      own choosing, using the shared interfaces and no job-specific code outside
+      the implementations. Justify the key and value for each job by explaining
+      what grouping brings together. Express a third problem from the examiner
+      using the same two functions.
+
+  - id: grpc-and-protobuf
+    level: understand
+    goal: >
+      Explain what a .proto file fixes and what gRPC generates from it,
+      including services, rpcs, and message fields. Identify where the contract
+      ends and the implementing code begins.
+
+  - id: applying-grpc
+    level: apply
+    goal: >
+      Use protobuf and gRPC on a case put to you in the viva: state the rpc, its
+      request and reply messages, field types, and serving machine. Adapt the
+      schema when the examiner changes the design, such as using one pair per
+      call instead of one reduce task's pairs, or pushing data instead of
+      fetching it.
+
+  - id: defending-design
+    level: evaluate
+    goal: >
+      Justify each field in your MapTask, MapDone, ReduceTask and ReduceDone
+      messages by what the receiving machine could not work out without it, and
+      compare your choice with an alternative you left out.
+
+
+

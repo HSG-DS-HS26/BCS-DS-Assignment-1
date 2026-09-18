@@ -1,0 +1,32 @@
+# Java compiler problem severities, read by the Java extension through
+# `java.settings.url` in settings.json.
+#
+# WHY. `gen/` holds the Java that protoc writes from a `.proto`, and it is a
+# source folder because the project genuinely compiles it. The Java extension
+# therefore lints it, and protobuf's generated code trips four optional checks
+# that nobody can act on — you cannot fix generated code, and the next build
+# would overwrite the fix anyway. The result was eleven Problems entries in
+# `1-spot/gen/spot/pb/` about `memoizedHashCode`, `serialVersionUID`, a
+# redundant superinterface and an unnecessary `@SuppressWarnings`.
+#
+# These are Eclipse's *optional* problems: style advice, not correctness. None
+# of them can fail a build. Turning the four off costs a little advice in
+# handwritten code and removes a wall of noise from generated code.
+#
+# Everything else stays at its default, so a real mistake is still reported.
+
+# "Type safety: the field memoizedHashCode from the raw type AbstractMessageLite…"
+# Generated builders use raw supertypes throughout.
+org.eclipse.jdt.core.compiler.problem.rawTypeReference=ignore
+
+# "At least one of the problems in category 'serial' is not analysed…"
+# Generated messages are Serializable and declare no serialVersionUID.
+org.eclipse.jdt.core.compiler.problem.missingSerialVersion=ignore
+
+# "Unnecessary @SuppressWarnings("unchecked")"
+# protoc emits the annotation whether or not the method needs it.
+org.eclipse.jdt.core.compiler.problem.unusedWarningToken=ignore
+
+# "Redundant superinterface ProtoFileDescriptorSupplier…"
+# The generated gRPC descriptor suppliers restate an inherited interface.
+org.eclipse.jdt.core.compiler.problem.redundantSuperinterface=ignore

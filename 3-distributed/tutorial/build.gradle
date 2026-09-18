@@ -1,0 +1,64 @@
+// The standalone gRPC Java build for Stage 1.
+//
+// The classpath contains the gRPC dependencies used by the running server and
+// client. Stage 1 uses real ports. Stage 2 adds dissaly in a separate build.
+//
+// `dissaly adopt` reads the gRPC and protobuf versions from this file. It then
+// moves the file to `build.gradle.bak` and writes its own `build.gradle.kts`.
+
+plugins {
+    id 'java'
+    id 'application'
+    // Compile .proto files with protoc and the gRPC plugin over src/main/proto.
+    id 'com.google.protobuf' version '0.9.5'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// `dissaly adopt` reads these pinned versions when it writes the replacement build.
+def grpcVersion = '1.83.1'
+def protobufVersion = '4.36.0'
+
+dependencies {
+    implementation "io.grpc:grpc-protobuf:$grpcVersion"
+    implementation "io.grpc:grpc-stub:$grpcVersion"
+    implementation "com.google.protobuf:protobuf-java:$protobufVersion"
+
+    // The network transport used by the real server. Adoption removes this
+    // dependency because simulated machines do not open Netty sockets.
+    runtimeOnly "io.grpc:grpc-netty-shaded:$grpcVersion"
+
+    // Supplies javax.annotation.Generated emitted by protoc-gen-grpc-java.
+    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:$protobufVersion" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion" }
+    }
+    generateProtoTasks {
+        all()*.plugins { grpc { } }
+    }
+}
+
+java {
+    // Compile against Java 25 without declaring a toolchain download.
+    compileJava.options.release = 25
+}
+
+// `./gradlew run` starts the server on port 50052. Stop it with ctrl-C.
+application {
+    mainClass = 'thumbs.ThumbServer'
+}
+
+// Run `./gradlew client` in a second terminal while the server is running.
+tasks.register('client', JavaExec) {
+    group = 'application'
+    description = 'Runs the client against a server already listening on 50052.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'thumbs.ThumbClient'
+    standardInput = System.in
+}

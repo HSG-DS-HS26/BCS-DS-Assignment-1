@@ -1,0 +1,68 @@
+{
+  // Open this file, not the folder: File -> Open Workspace from File, or answer
+  // "Open Workspace" when VS Code offers it. In a Codespace and in the Dev
+  // Container it opens by itself, because .devcontainer/devcontainer.json points
+  // at this file.
+  //
+  // We do this because the Java extension compiles what Gradle imports. The root build stops
+  // at any directory with its own `settings.gradle`, which both halves of
+  // `3-distributed/` have and need, because `dissaly adopt` requires a
+  // single-module build. Opened as a plain folder, nothing under
+  // `3-distributed/` is compiled as you type: no red underlines, no Problems
+  // entries, however broken the file is. Listing the two builds as folders here
+  // makes the Java extension import them as well, and Task 3 gets the same live
+  // errors as Task 1 and Task 2.
+  //
+  // `./gradlew task3Compile` and `./gradlew tutorialCompile` report the same
+  // errors in a terminal, whatever editor you use.
+  "folders": [
+    {
+      "name": "assignment",
+      "path": "."
+    },
+    {
+      "name": "3-distributed/exercise (Task 3)",
+      "path": "3-distributed/exercise"
+    },
+    {
+      "name": "3-distributed/tutorial",
+      "path": "3-distributed/tutorial"
+    }
+  ],
+
+  // Folder settings in `.vscode/settings.json` still apply to the folder they
+  // sit in. These cover the two folders above, which have none of their own.
+  //
+  // The status bar buttons are repeated from `.vscode/settings.json` because an
+  // extension reads workspace settings, not the settings of one folder in the
+  // workspace: left only in the folder, the buttons disappear as soon as you
+  // open this file. Keep the two lists the same.
+  "settings": {
+    "VsCodeTaskButtons.tasks": [
+      {
+        "label": "$(check) Compile Task 3",
+        "task": "Task 3: compile",
+        "tooltip": "Compiles 3-distributed/exercise and puts the errors in the Problems panel."
+      },
+      {
+        "label": "$(cloud-upload) Hand in",
+        "task": "Hand in: write the PDF for Canvas",
+        "tooltip": "Commit and push first. Then this writes the PDF you upload to Canvas."
+      }
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "files.exclude": {
+      "**/build": true,
+      "**/bin": true,
+      "**/lib": true
+    },
+    "search.exclude": {
+      "**/build": true,
+      "**/lib": true,
+      "**/gen": true
+    },
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [100]
+  }
+}

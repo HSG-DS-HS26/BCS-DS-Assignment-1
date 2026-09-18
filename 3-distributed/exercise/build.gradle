@@ -1,0 +1,170 @@
+// Task 3 standalone gRPC build using real ports.
+// `dissaly adopt` reads the pinned gRPC and protobuf versions, moves this file
+// to `build.gradle.bak`, and writes `build.gradle.kts`.
+
+plugins {
+    id 'java'
+    id 'application'
+    // Compile src/main/proto with protoc and the gRPC plugin.
+    id 'com.google.protobuf' version '0.9.5'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// `dissaly adopt` reads these versions for its replacement build.
+def grpcVersion = '1.83.1'
+def protobufVersion = '4.36.0'
+
+dependencies {
+    implementation "io.grpc:grpc-protobuf:$grpcVersion"
+    implementation "io.grpc:grpc-stub:$grpcVersion"
+    implementation "com.google.protobuf:protobuf-java:$protobufVersion"
+
+    // RunJob assigns a round of tasks with future stubs and waits for the round.
+    implementation 'com.google.guava:guava:33.4.8-jre'
+
+    // Network transport for the standalone program; DISSALy uses no Netty sockets.
+    runtimeOnly "io.grpc:grpc-netty-shaded:$grpcVersion"
+
+    // Provides javax.annotation.Generated for protoc-gen-grpc-java output.
+    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:$protobufVersion" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion" }
+    }
+    generateProtoTasks {
+        all()*.plugins { grpc { } }
+    }
+}
+
+// The scenarios in simulations/ name services and rpcs by the exact spelling
+// below. A different spelling is not a style difference: dissaly finds no node
+// for the service, and prices an unnamed rpc at nothing without erroring.
+// Comments are stripped first, so a commented-out draft does not pass.
+def schemaPinned = tasks.register('schemaPinned') {
+    group = 'verification'
+    description = 'Checks that worker.proto declares the names the scenarios key on.'
+    def proto = file('src/main/proto/worker.proto')
+    doLast {
+        def text = proto.text
+                .replaceAll(/(?s)\/\*.*?\*\//, '')
+                .replaceAll(/(?m)\/\/.*$/, '')
+
+        def pins = [
+            'service Worker {'                                    : ~/(?m)^\s*service\s+Worker\s*\{/,
+            'service Heartbeat {'                                 : ~/(?m)^\s*service\s+Heartbeat\s*\{/,
+            'rpc RunMapTask (MapTask) returns (MapDone);'          : ~/rpc\s+RunMapTask\s*\(\s*MapTask\s*\)\s*returns\s*\(\s*MapDone\s*\)/,
+            'rpc RunReduceTask (ReduceTask) returns (ReduceDone);' : ~/rpc\s+RunReduceTask\s*\(\s*ReduceTask\s*\)\s*returns\s*\(\s*ReduceDone\s*\)/,
+            'rpc Ping (Beat) returns (Alive);'                     : ~/rpc\s+Ping\s*\(\s*Beat\s*\)\s*returns\s*\(\s*Alive\s*\)/,
+            'message MapTask { ... }'                              : ~/(?m)^\s*message\s+MapTask\s*\{/,
+            'message MapDone { ... }'                              : ~/(?m)^\s*message\s+MapDone\s*\{/,
+            'message ReduceTask { ... }'                           : ~/(?m)^\s*message\s+ReduceTask\s*\{/,
+            'message ReduceDone { ... }'                           : ~/(?m)^\s*message\s+ReduceDone\s*\{/,
+            'message Beat { ... }'                                 : ~/(?m)^\s*message\s+Beat\s*\{/,
+            'message Alive { ... }'                                : ~/(?m)^\s*message\s+Alive\s*\{/,
+        ]
+
+        def missing = pins.findAll { line, pattern -> !(text =~ pattern) }.keySet()
+        if (missing) {
+            throw new GradleException("""
+
+src/main/proto/worker.proto is missing:
+
+${missing.collect { '    ' + it }.join('\n')}
+
+These spellings are a wire contract, not a preference. A scenario in
+simulations/ names the service on the left of `runs:` and the rpc under
+`simulatedDuration:`, so a service under another name is a node nobody can
+find, and an rpc under another name is a call that costs nothing.
+
+The exact lines are in the FIXED NAMES block at the top of worker.proto. What
+each message carries is still yours to decide.
+""")
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn schemaPinned }
+
+// The scenarios name post-adoption paths, because that is when they run. The
+// pre-adoption spelling loads and mis-prices rather than being refused, so it
+// would go unnoticed.
+def simulationPathsIntact = tasks.register('simulationPathsIntact') {
+    group = 'verification'
+    description = 'Checks that no scenario names a pre-adoption source path.'
+    def dir = file('simulations')
+    doLast {
+        if (!dir.isDirectory()) return
+        // Comments are stripped first: every scenario's header says which path
+        // spelling it does *not* use, and that sentence is not a finding.
+        def wrong = dir.listFiles({ f -> f.name.endsWith('.yaml') } as FileFilter)
+                       .findAll { f ->
+                           f.readLines()
+                            .findAll { !it.trim().startsWith('#') }
+                            .any { it.contains('src/main/java/') }
+                       }
+                       .collect { 'simulations/' + it.name }
+        if (wrong) {
+            throw new GradleException("""
+
+These scenarios name a pre-adoption source path:
+
+${wrong.collect { '    ' + it }.join('\n')}
+
+After `dissaly adopt` the sources live under src/, not src/main/java/. A
+scenario with the old path still loads; it simply prices nothing and measures a
+system that is not running.
+""")
+        }
+    }
+}
+
+// The partitioning check. It drives the Workers directly rather than through the
+// Master, because the Master's merge is exactly what hides the fault it hunts.
+//
+//     ./gradlew partitionCheck
+tasks.register('partitionCheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails when a word is claimed by two reduce tasks, or by none.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'checks.PartitionCheck'
+}
+
+tasks.named('check') { dependsOn simulationPathsIntact }
+
+java {
+    // Compile against Java 25 without declaring a toolchain download.
+    compileJava.options.release = 25
+}
+
+// `./gradlew run` starts the local cluster, runs one job, and prints the result.
+//
+//     ./gradlew run
+//     ./gradlew run --args="20000 5 21 7 7"      words seed M R workers
+//
+// Every Worker remains available. The Task 5 scenarios schedule failures and
+// slowdowns.
+//
+// `infrastructure.GrpcUserProgram` starts the cluster and submits the job.
+// After adoption, the scenario starts the cluster and
+// `infrastructure.DissalyUserProgram` implements the DISSALy `Job`.
+application {
+    mainClass = 'infrastructure.GrpcUserProgram'
+}
+
+// The adopted files import DISSALy packages unavailable to this build. Exclude
+// them until `dissaly adopt` replaces this build and compiles all of `src/`.
+// Afterwards, delete `GrpcUserProgram.java` and `GrpcMaster.java`: they bind or
+// dial real ports, which `dissaly check` rejects in a lab.
+sourceSets {
+    main {
+        java {
+            exclude 'infrastructure/DissalyUserProgram.java'
+            exclude 'infrastructure/DissalyMaster.java'
+        }
+    }
+}

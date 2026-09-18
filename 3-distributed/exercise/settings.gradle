@@ -1,0 +1,4 @@
+// Task 3 uses a separate Gradle build. The root settings file skips directories
+// that contain this file.
+// `dissaly adopt` requires a single-module build and replaces its files as a unit.
+rootProject.name = 'exercise'

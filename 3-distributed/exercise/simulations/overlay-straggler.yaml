@@ -1,0 +1,29 @@
+# One machine is four times slower than the others for the rest of the run, and
+# never stops answering.
+#
+#     ./dissaly simulate simulations/m21-r7.yaml --overlay simulations/overlay-straggler.yaml
+#
+# `degrade` multiplies every declared cost on w5, so it is slow at its tasks and
+# slow at its heartbeat. That is the case the "ask twice" rule in
+# RunJob.writeOff is for: a machine that misses a task deadline but answers a
+# ping is kept, and writing it off instead would throw away every map task it
+# holds.
+#
+# Compare m21-r7, m70-r7, and m140-r7. A map task processes words/M. At M = 21,
+# the slowdown produces 114,000 refMs, exceeding the 70,000 refMs deadline. At
+# M = 70, it produces 34,000 refMs. The coarse task times out and is retried;
+# the finer task completes, though w5 finishes fewer tasks than other Workers.
+#
+# w5 answers its heartbeats, so the write-off policy keeps it and
+# `workersFailed` remains zero.
+#
+# M = 140 adds per-task overhead. Compare its result with M = 70.
+nodes:
+  w5:
+    failures:
+      - { degrade: 4, at: 60 refMs }
+
+# Fetch carries idempotency_level = NO_SIDE_EFFECTS, which is what allows it to
+# be retried at all. Naming a task rpc here is refused before the run starts.
+retries:
+  - { method: Fetch, attempts: 2, backoff: 100 refMs, multiplier: 2 }

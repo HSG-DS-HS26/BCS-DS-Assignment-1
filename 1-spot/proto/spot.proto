@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+// One key-value store with a single key, kept on three replicas, plus the
+// messages exchanged by the client and replicas. Both systems use this schema.
+// They differ in how a replica handles an incoming message.
+package spot;
+
+option java_package = "spot.pb";
+option java_multiple_files = true;
+
+// Messages
+
+message Plan {
+  int32 rounds = 1;
+  string key = 2;
+}
+
+enum Step {
+  // Straight from the client. The replica that receives it decides what to do.
+  CLIENT = 0;
+
+  // Hold this value, and keep answering reads with the previous one.
+  STAGE = 1;
+
+  // The value held for this key is now the one to answer reads with. Carries
+  // the key and nothing else.
+  COMMIT = 2;
+
+  // Store this value and answer reads with it immediately.
+  STORE = 3;
+}
+
+message Entry {
+  string key = 1;
+
+  // The number written. A number rather than text so that the run shows it:
+  // dissaly prints a message's numbers on the film and leaves short text out.
+  int64 value = 2;
+
+  // Which write this is. Higher is later.
+  int64 version = 3;
+
+  // The machine that sent it, or answered.
+  string from = 4;
+
+  // False when the replica has never been given this key.
+  bool found = 5;
+
+  // Why this write was sent. Only replicas set it.
+  Step step = 6;
+}
+
+message Key { string key = 1; }
+
+message Ack {
+  string from = 1;
+  // Whether the value is now the answer this system would give.
+  bool applied = 2;
+  // How many replicas hold it.
+  int32 replicas = 3;
+}
+
+// Service
+service Copy {
+  rpc Write (Entry) returns (Ack) { option idempotency_level = IDEMPOTENT; }
+  rpc Read (Key) returns (Entry) { option idempotency_level = NO_SIDE_EFFECTS; }
+}

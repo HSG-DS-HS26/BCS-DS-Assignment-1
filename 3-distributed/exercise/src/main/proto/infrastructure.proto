@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+// Supplied Task 3 infrastructure schema.
+// This file declares the public Master service. worker.proto declares Worker
+// services.
+package mapreduce;
+
+option java_package = "mapreduce.pb";
+option java_multiple_files = true;
+
+// --------------------------------------------------------------------- Master
+
+service Master {
+  // Runs one job. The request supplies its configuration.
+  rpc RunJob (JobRequest) returns (JobResult);
+
+  // Reports progress while RunJob is in flight.
+  rpc Progress (Empty) returns (ProgressReply) { option idempotency_level = NO_SIDE_EFFECTS; }
+}
+
+// ------------------------------------------------------------------- Messages
+
+message Empty {}
+
+message JobRequest {
+  // Total number of input words.
+  int64 words = 1;
+
+  // Seed for reproducible input generation.
+  int64 seed = 2;
+
+  // M, the number of input pieces and map tasks.
+  int32 map_tasks = 3;
+
+  // R, the number of reduce tasks and intermediate-pair groups per map task.
+  int32 reduce_tasks = 4;
+
+  // Worker addresses. Local runs use host:port; simulations use node names.
+  repeated string workers = 5;
+}
+
+message JobResult {
+  // The output key/value pairs, sorted by key.
+  repeated Pair pairs = 1;
+
+  int32 map_tasks_run = 2;
+  int32 reduce_tasks_run = 3;
+
+  // Tasks re-executed after a Worker was lost.
+  int32 tasks_reexecuted = 4;
+  repeated string workers_failed = 5;
+
+  // Assignment rounds completed in each phase.
+  int32 map_rounds = 6;
+  int32 reduce_rounds = 7;
+}
+
+// Key/value pair used by the word-count job and Worker services.
+// Pair uses int64 for word counts.
+message Pair {
+  string key = 1;
+  int64 value = 2;
+}
+
+message ProgressReply {
+  Phase phase = 1;
+  int32 map_tasks_done = 2;
+  int32 map_tasks_total = 3;
+  int32 reduce_tasks_done = 4;
+  int32 reduce_tasks_total = 5;
+}
+
+enum Phase {
+  IDLE = 0;
+  MAP = 1;
+  REDUCE = 2;
+  DONE = 3;
+}

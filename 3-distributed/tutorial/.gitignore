@@ -1,0 +1,5 @@
+
+# Dissaly generates protobuf sources beside the schema so the editor finds them.
+# Other generated files go under build/.
+gen/
+build/

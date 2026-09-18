@@ -1,0 +1,7 @@
+// This tutorial has its own Gradle build.
+//
+// `dissaly adopt` requires a single-module settings file and refuses a
+// multi-module tree. The exercise uses the same layout.
+//
+// The root build skips directories that contain this file.
+rootProject.name = 'tutorial'
